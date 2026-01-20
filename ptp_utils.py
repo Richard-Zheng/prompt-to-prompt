@@ -76,11 +76,11 @@ def diffusion_step(model, controller, latents, context, t, guidance_scale, low_r
 
 
 def latent2image(vae, latents):
-    latents = 1 / 0.18215 * latents
+    latents = 1 / 0.18215 * latents # see: https://github.com/huggingface/diffusers/issues/437#issuecomment-1241827515
     image = vae.decode(latents)['sample']
-    image = (image / 2 + 0.5).clamp(0, 1)
-    image = image.cpu().permute(0, 2, 3, 1).numpy()
-    image = (image * 255).astype(np.uint8)
+    image = (image / 2 + 0.5).clamp(0, 1) # scale to [0, 1]
+    image = image.cpu().permute(0, 2, 3, 1).numpy() # NCHW to NHWC
+    image = (image * 255).astype(np.uint8) # scale to [0, 255], float to uint
     return image
 
 
