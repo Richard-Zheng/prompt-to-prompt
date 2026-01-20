@@ -177,31 +177,31 @@ def register_attention_control(model, controller):
         else:
             to_out = self.to_out
 
-        def forward(x, context=None, mask=None):
+        def forward(x, encoder_hidden_states=None, attention_mask=None):
             batch_size, sequence_length, dim = x.shape
             h = self.heads
             q = self.to_q(x)
-            is_cross = context is not None
-            context = context if is_cross else x
-            k = self.to_k(context)
-            v = self.to_v(context)
-            q = self.reshape_heads_to_batch_dim(q)
-            k = self.reshape_heads_to_batch_dim(k)
-            v = self.reshape_heads_to_batch_dim(v)
+            is_cross = encoder_hidden_states is not None
+            encoder_hidden_states = encoder_hidden_states if is_cross else x
+            k = self.to_k(encoder_hidden_states)
+            v = self.to_v(encoder_hidden_states)
+            q = self.head_to_batch_dim(q)
+            k = self.head_to_batch_dim(k)
+            v = self.head_to_batch_dim(v)
 
             sim = torch.einsum("b i d, b j d -> b i j", q, k) * self.scale
 
-            if mask is not None:
-                mask = mask.reshape(batch_size, -1)
+            if attention_mask is not None:
+                attention_mask = attention_mask.reshape(batch_size, -1)
                 max_neg_value = -torch.finfo(sim.dtype).max
-                mask = mask[:, None, :].repeat(h, 1, 1)
-                sim.masked_fill_(~mask, max_neg_value)
+                attention_mask = attention_mask[:, None, :].repeat(h, 1, 1)
+                sim.masked_fill_(~attention_mask, max_neg_value)
 
             # attention, what we cannot get enough of
             attn = sim.softmax(dim=-1)
             attn = controller(attn, is_cross, place_in_unet)
             out = torch.einsum("b i j, b j d -> b i d", attn, v)
-            out = self.reshape_batch_dim_to_heads(out)
+            out = self.batch_to_head_dim(out)
             return to_out(out)
 
         return forward
