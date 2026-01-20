@@ -160,8 +160,7 @@ def text2image_ldm_stable(
     latent, latents = init_latent(latent, model, height, width, generator, batch_size)
     
     # set timesteps
-    extra_set_kwargs = {"steps_offset": 1}
-    model.scheduler.set_timesteps(num_inference_steps, **extra_set_kwargs)
+    model.scheduler.set_timesteps(num_inference_steps)
     for t in tqdm(model.scheduler.timesteps):
         latents = diffusion_step(model, controller, latents, context, t, guidance_scale, low_resource)
     
@@ -219,7 +218,7 @@ def register_attention_control(model, controller):
         controller = DummyController()
 
     def register_recr(net_, count, place_in_unet):
-        if net_.__class__.__name__ == 'CrossAttention':
+        if net_.__class__.__name__ == 'Attention':
             net_.forward = ca_forward(net_, place_in_unet)
             return count + 1
         elif hasattr(net_, 'children'):
